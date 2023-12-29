@@ -1,5 +1,7 @@
 # Scalable Online Store Backend with Kafka Streaming
 
+![alt text](https://github.com/Mekazstan/kafka-orders-streaming/blob/main/Model-Diagram.png)
+
 This project focuses on building a scalable and decoupled backend for an online store, leveraging Kafka streaming for efficient communication between different components. The architecture involves several backend services that handle different aspects of the order processing workflow.
 
 
