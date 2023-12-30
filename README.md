@@ -43,3 +43,9 @@ To run the project locally, follow these steps:
     Run the Frontend: Simulate frontend interactions by triggering order placements.
 
     Monitor Kafka Topics: Use Kafka tools to monitor the Order_details and Order_confirmed topics and observe the real-time flow of data.
+
+
+docker-compose up
+docker-compose up -d
+docker-compose logs
+docker-compose down
