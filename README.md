@@ -49,3 +49,4 @@ docker-compose up
 docker-compose up -d
 docker-compose logs
 docker-compose down
+kafka-topics.sh --list --bootstrap-server localhost:9092

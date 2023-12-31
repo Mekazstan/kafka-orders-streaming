@@ -1,22 +1,60 @@
-import json
 import time
 from faker import Faker
-from kafka import KafkaProducer
+from config import config
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.serialization import StringSerializer
+from confluent_kafka.schema_registry.avro import AvroSerializer
+from confluent_kafka import SerializingProducer
 
 # Topic Name
 ORDER_KAFKA_TOPIC = "order_details"
-ORDER_LIMIT = 20000
 
-# Creating the Producer 
-producer = KafkaProducer(bootstrap_servers="localhost:29092")
-fake = Faker()
+# Order Limit
+ORDER_LIMIT = 100
+
+# Configuring Schema Registry
+schema_registry_client = SchemaRegistryClient(config["schema_registry"])
+orders_schema = schema_registry_client.get_latest_version("order_details-value")
+
+# Setting up Kafka Config
+# kafka_config = config["kafka"] | {
+#     "key.serializer": StringSerializer(),
+#     "value.serializer": AvroSerializer(
+#         schema_registry_client,
+#         orders_schema.schema.schema_str
+#     )
+# }
+
+kafka_config = config["kafka"]
+kafka_config.update({
+    "key.serializer": StringSerializer(),
+    "value.serializer": AvroSerializer(
+        schema_registry_client,
+        orders_schema.schema.schema_str
+    )
+})
+
+
+def on_delivery(err, msg):
+    if err is not None:
+        print(f"Message delivery failed: {err}")
+    else:
+        print(f"Message delivered to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}")
+
+
+# Creating the Producer
+producer = SerializingProducer(kafka_config)
+
 
 print("""
     Simulating Data generation from the Frontend Applications
         - A Unique order will be created every 5 seconds.  
     """)
 
-for i in range(1, ORDER_LIMIT):
+
+# Order transactions Simulation
+fake = Faker()
+for i in range(100, ORDER_LIMIT):
     data = {
         "customer_id": i,
         "username": fake.name(),
@@ -24,13 +62,32 @@ for i in range(1, ORDER_LIMIT):
         "phone_number": fake.phone_number(),
         "address": fake.address(),
         "total_cost": i * 5,
-        "items": [fake.word() for _ in range(fake.random_int(min=1, max=5))],  # Generates a random list of items
-        "order_date": fake.date_time_this_decade(),
+        "items": [fake.word() for _ in range(fake.random_int(min=1, max=5))],
+        "order_date": fake.date_time_this_decade().isoformat(),
         "payment_method": fake.random_element(elements=("Credit Card", "PayPal", "Cash")),
         "age": fake.random_int(min=18, max=80),
         "gender": fake.random_element(elements=("Male", "Female", "Other")),
     }
     
-    producer.send(ORDER_KAFKA_TOPIC, json.dumps(data).encode("utf-8"))
-    print(f"{i}: {data['username']} just made an order...")
-    time.sleep(5)
+    customer_id = str(data["customer_id"])
+        
+    producer.produce(
+        topic=ORDER_KAFKA_TOPIC,
+        key=customer_id,
+        value={
+            "CUSTOMER_ID": data["customer_id"],
+            "USERNAME": data["username"],
+            "EMAIL": data["email"],
+            "PHONE_NUMBER": data["phone_number"],
+            "ADDRESS": data["address"],
+            "TOTAL_COST": data["total_cost"],
+            "ITEMS": data["items"],
+            "ORDER_DATE": data["order_date"],
+            "PAYMENT_METHOD": data["payment_method"],
+            "AGE": data["age"],
+            "GENDER": data["gender"],
+        },
+        on_delivery=on_delivery
+    )
+        
+producer.flush()
