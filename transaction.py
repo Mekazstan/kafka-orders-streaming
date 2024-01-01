@@ -1,18 +1,53 @@
-# import json
-# import time
-# from config import config
-# from confluent_kafka.schema_registry import SchemaRegistryClient
-# from confluent_kafka.serialization import StringSerializer
-# from confluent_kafka.schema_registry.avro import AvroSerializer
-# from confluent_kafka import DeserializingConsumer
-# from confluent_kafka import SerializingProducer
+import json
+import time
+from config import config
+from confluent_kafka import Consumer, KafkaException
 
 
-# # Topic Name
-# ORDER_KAFKA_TOPIC = "order_details"
-# ORDER_CONFIRMED_KAFKA_TOPIC = "order_confirmed"
+# Topic Name
+ORDER_KAFKA_TOPIC = "order_details"
+ORDER_CONFIRMED_KAFKA_TOPIC = "order_confirmed"
 
-# # Creating Consumer
+# Function to update config for Consumer requests
+def set_consumer_configs():
+    config['group.id'] = 'hello_group'
+    config['auto.offset.reset'] = 'earliest'
+    config['enable.auto.commit'] = False
+
+# Creating a callback function for partition assignment
+def on_delivery(err, msg):
+    if err is not None:
+        print(f"Message delivery failed: {err}")
+    else:
+        print(f"Message delivered to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}")
+        
+        
+        
+if __name__ == '__main__':
+    set_consumer_configs()
+    
+    # Creating Consumer
+    consumer = Consumer(config)
+    consumer.subscribe([ORDER_KAFKA_TOPIC], on_assign=on_delivery)
+    
+    try:
+        while True:
+            event = consumer.poll(1.0)
+            if event is None:  
+                continue
+            if event.error():
+                raise KafkaException(event.error())
+            else:
+                val = event.value().decode('utf8')
+                partition = event.partition()
+                print(f'Received: {val} from partition {partition}    ')
+                # consumer.commit(event)
+    except KeyboardInterrupt:
+        print('Canceled by user.')
+    finally:
+        consumer.close()
+
+
 
 # consumer = KafkaConsumer(
 #     ORDER_KAFKA_TOPIC,
