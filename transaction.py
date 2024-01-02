@@ -1,51 +1,57 @@
 import json
 import time
 from config import config
-from confluent_kafka import Consumer, KafkaException
+from confluent_kafka import DeserializingConsumer
+from confluent_kafka.schema_registry.avro import AvroDeserializer
+from confluent_kafka.serialization import StringDeserializer
+from confluent_kafka.schema_registry import SchemaRegistryClient
 
 
 # Topic Name
 ORDER_KAFKA_TOPIC = "order_details"
 ORDER_CONFIRMED_KAFKA_TOPIC = "order_confirmed"
 
-# Function to update config for Consumer requests
-def set_consumer_configs():
-    config['group.id'] = 'hello_group'
-    config['auto.offset.reset'] = 'earliest'
-    config['enable.auto.commit'] = False
+schema_registry_url = 'https://psrc-l622j.us-east-2.aws.confluent.cloud'
+bootstrap_servers = 'pkc-921jm.us-east-2.aws.confluent.cloud:9092'
 
-# Creating a callback function for partition assignment
-def on_delivery(err, msg):
-    if err is not None:
-        print(f"Message delivery failed: {err}")
-    else:
-        print(f"Message delivered to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}")
-        
-        
-        
-if __name__ == '__main__':
-    set_consumer_configs()
-    
-    # Creating Consumer
-    consumer = Consumer(config)
-    consumer.subscribe([ORDER_KAFKA_TOPIC], on_assign=on_delivery)
-    
-    try:
-        while True:
-            event = consumer.poll(1.0)
-            if event is None:  
-                continue
-            if event.error():
-                raise KafkaException(event.error())
-            else:
-                val = event.value().decode('utf8')
-                partition = event.partition()
-                print(f'Received: {val} from partition {partition}    ')
-                # consumer.commit(event)
-    except KeyboardInterrupt:
-        print('Canceled by user.')
-    finally:
-        consumer.close()
+schema_registry_client = SchemaRegistryClient(config["schema_registry"])
+
+avro_schema = schema_registry_client.get_latest_version(f"{ORDER_KAFKA_TOPIC}-value")
+value_schema = avro_schema.schema.schema_str
+
+avro_deserializer = AvroDeserializer(value_schema, schema_registry_client)
+
+# Updatig the config with deserializers
+kafka_config = config["kafka"]
+kafka_config.update({
+    'key.deserializer': StringDeserializer('utf_8'),
+    'value.deserializer': avro_deserializer,
+    'group.id': "orders_consumer_group",
+    'auto.offset.reset': "latest"
+})
+
+# Instantiating the Consumer
+consumer = DeserializingConsumer(kafka_config)  
+
+# Subscribe to the topic 'order_details'
+consumer.subscribe([ORDER_KAFKA_TOPIC])  
+             
+try:
+    print("Listening for Transactions..")
+    while True:
+        msg = consumer.poll(1.0)
+
+        if msg is None:
+            continue
+
+        # Print the consumed message
+        print(f"Consumed message: {msg.value()}")
+
+except KeyboardInterrupt:
+    print("User Interrupt!!")
+finally:
+    # Close down consumer to commit final offsets.
+    consumer.close()
 
 
 
