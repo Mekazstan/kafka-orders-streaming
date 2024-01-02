@@ -1,9 +1,10 @@
 import json
 import time
 from config import config
-from confluent_kafka import DeserializingConsumer
-from confluent_kafka.schema_registry.avro import AvroDeserializer
-from confluent_kafka.serialization import StringDeserializer
+from confluent_kafka.error import SerializationError
+from confluent_kafka import SerializingProducer, DeserializingConsumer
+from confluent_kafka.schema_registry.avro import AvroSerializer, AvroDeserializer
+from confluent_kafka.serialization import StringSerializer, StringDeserializer
 from confluent_kafka.schema_registry import SchemaRegistryClient
 
 
@@ -11,15 +12,12 @@ from confluent_kafka.schema_registry import SchemaRegistryClient
 ORDER_KAFKA_TOPIC = "order_details"
 ORDER_CONFIRMED_KAFKA_TOPIC = "order_confirmed"
 
-schema_registry_url = 'https://psrc-l622j.us-east-2.aws.confluent.cloud'
-bootstrap_servers = 'pkc-921jm.us-east-2.aws.confluent.cloud:9092'
-
 schema_registry_client = SchemaRegistryClient(config["schema_registry"])
 
 avro_schema = schema_registry_client.get_latest_version(f"{ORDER_KAFKA_TOPIC}-value")
 value_schema = avro_schema.schema.schema_str
 
-avro_deserializer = AvroDeserializer(value_schema, schema_registry_client)
+avro_deserializer = AvroDeserializer(schema_registry_client, value_schema)
 
 # Updatig the config with deserializers
 kafka_config = config["kafka"]

@@ -46,7 +46,7 @@ print("""
 
 # Order transactions Simulation
 fake = Faker()
-for i in range(200, ORDER_LIMIT):
+for i in range(303, ORDER_LIMIT):
     data = {
         "customer_id": i,
         "username": fake.name(),
