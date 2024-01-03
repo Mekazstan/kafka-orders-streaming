@@ -34,7 +34,7 @@ consumer.subscribe([ORDER_CONFIRMED_KAFKA_TOPIC])
 emails_sent_to = set()
              
 try:
-    print("Listening for Transactions..")
+    print("Listening for Messages..")
     while True:
         msg = consumer.poll(1.0)
 
