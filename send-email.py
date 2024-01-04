@@ -46,6 +46,8 @@ try:
         email = consumed_message["EMAIL"] 
         emails_sent_to.add(email)
         
+        # This should be replaced with the logic to send email
+        
         if len(emails_sent_to) > 1:
             print(f"""
                   {len(emails_sent_to)} email sent
