@@ -1,4 +1,5 @@
-# Scalable Online Store Backend with Kafka Streaming (Confluent Kafka)
+# Scalable Decoupled Online Store Backend with Kafka Streaming (Confluent Kafka)
+### This is a simulation of microservies concepts.
 
 ![alt text](https://github.com/Mekazstan/kafka-orders-streaming/blob/main/Model-Diagram.png)
 
